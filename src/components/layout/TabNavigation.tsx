@@ -6,6 +6,9 @@ const TABS: { id: TabType; label: string }[] = [
   { id: 'warming', label: 'Warming Chart' },
   { id: 'seasonal', label: 'Seasonal Onset' },
   { id: 'daily', label: 'Daily Viewer' },
+  { id: 'extreme', label: 'Extreme Heat/Cool' },
+  { id: 'variability', label: 'Variability' },
+  { id: 'cyclicality', label: 'Cyclicality' },
 ];
 
 export function TabNavigation() {

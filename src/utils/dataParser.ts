@@ -77,7 +77,28 @@ function parseDate(value: unknown): Date | null {
       return isValidDate(date) ? date : null;
     }
 
-    // Try other common formats
+    // Try M/D/YY or MM/DD/YY format (common in Excel)
+    const mdyyMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+    if (mdyyMatch) {
+      const yy = parseInt(mdyyMatch[3]);
+      const year = yy < 30 ? yy + 2000 : yy + 1900;
+      const month = parseInt(mdyyMatch[1]) - 1;
+      const day = parseInt(mdyyMatch[2]);
+      const date = new Date(year, month, day);
+      return isValidDate(date) ? date : null;
+    }
+
+    // Try M/D/YYYY or MM/DD/YYYY format
+    const mdyyyyMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdyyyyMatch) {
+      const year = parseInt(mdyyyyMatch[3]);
+      const month = parseInt(mdyyyyMatch[1]) - 1;
+      const day = parseInt(mdyyyyMatch[2]);
+      const date = new Date(year, month, day);
+      return isValidDate(date) ? date : null;
+    }
+
+    // Fallback: try native Date parsing
     const parsed = new Date(value);
     return isValidDate(parsed) ? parsed : null;
   }

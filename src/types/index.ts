@@ -87,7 +87,7 @@ export interface FilterState {
 }
 
 // Tab type
-export type TabType = 'warming' | 'seasonal' | 'daily';
+export type TabType = 'warming' | 'seasonal' | 'daily' | 'extreme' | 'variability' | 'cyclicality';
 
 // App state
 export interface AppState {

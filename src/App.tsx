@@ -4,15 +4,30 @@ import { TabNavigation } from './components/layout/TabNavigation';
 import { WarmingChart } from './components/warming-chart/WarmingChart';
 import { SeasonalOnset } from './components/seasonal-onset/SeasonalOnset';
 import { DailyViewer } from './components/daily-viewer/DailyViewer';
+import { ExtremeHeatCool } from './components/extreme-analysis/ExtremeHeatCool';
+import { VariabilityAnalysis } from './components/variability/VariabilityAnalysis';
+import { CyclicalityDetection } from './components/cyclicality/CyclicalityDetection';
 import { useFilterStore } from './store/useFilterStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
+import { useExtremeStore } from './store/useExtremeStore';
+import { useVariabilityStore } from './store/useVariabilityStore';
+import { useCyclicalityStore } from './store/useCyclicalityStore';
+import { useDataRange } from './hooks/useDataRange';
 import { loadDataFromPath } from './utils/dataParser';
 
 function App() {
   const { activeTab } = useFilterStore();
   const { dailyRecords, isLoading, error, setDailyRecords } = useDataStore();
   const { excelFilePath } = useSettingsStore();
+
+  // Global data range - single source of truth
+  const dataRange = useDataRange();
+
+  // Get store initialization methods
+  const initializeExtremeStore = useExtremeStore(state => state.initializeYearRange);
+  const initializeVariabilityStore = useVariabilityStore(state => state.initializeYearRange);
+  const initializeCyclicalityStore = useCyclicalityStore(state => state.initializeFromData);
 
   // Auto-load data on startup
   useEffect(() => {
@@ -27,6 +42,16 @@ function App() {
     }
   }, [excelFilePath, dailyRecords.length, isLoading, setDailyRecords]);
 
+  // Initialize all stores with actual data range when data loads
+  useEffect(() => {
+    if (dataRange.isLoaded && dataRange.minYear && dataRange.maxYear) {
+      initializeExtremeStore(dataRange.minYear, dataRange.maxYear);
+      initializeVariabilityStore(dataRange.minYear, dataRange.maxYear);
+      initializeCyclicalityStore(dataRange.minYear, dataRange.maxYear, dataRange.availableDecades);
+    }
+  }, [dataRange.isLoaded, dataRange.minYear, dataRange.maxYear, dataRange.availableDecades,
+      initializeExtremeStore, initializeVariabilityStore, initializeCyclicalityStore]);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'warming':
@@ -35,6 +60,12 @@ function App() {
         return <SeasonalOnset />;
       case 'daily':
         return <DailyViewer />;
+      case 'extreme':
+        return <ExtremeHeatCool />;
+      case 'variability':
+        return <VariabilityAnalysis />;
+      case 'cyclicality':
+        return <CyclicalityDetection />;
       default:
         return null;
     }
