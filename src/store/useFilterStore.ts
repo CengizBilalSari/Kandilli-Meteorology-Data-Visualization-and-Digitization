@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AggregationScale, TemperatureMetric, TabType, FilterState } from '../types';
+import { AggregationScale, TemperatureMetric, TabType, FilterState, VisibleMetrics } from '../types';
 
 interface FilterStore extends FilterState {
   // Tab state
@@ -17,6 +17,7 @@ interface FilterStore extends FilterState {
   setSeasonPreset: (season: 'winter' | 'spring' | 'summer' | 'fall') => void;
   setShowTrendLine: (show: boolean) => void;
   setMovingAverageWindow: (window: number) => void;
+  toggleVisibleMetric: (metric: keyof VisibleMetrics) => void;
   resetFilters: () => void;
 }
 
@@ -28,6 +29,11 @@ const DEFAULT_FILTERS: FilterState = {
   selectedMonths: [],
   showTrendLine: false,
   movingAverageWindow: 30,
+  visibleMetrics: {
+    avg: true,
+    min: true,
+    max: true,
+  },
 };
 
 const SEASON_MONTHS = {
@@ -68,6 +74,14 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setShowTrendLine: (show) => set({ showTrendLine: show }),
 
   setMovingAverageWindow: (window) => set({ movingAverageWindow: window }),
+
+  toggleVisibleMetric: (metric) =>
+    set((state) => ({
+      visibleMetrics: {
+        ...state.visibleMetrics,
+        [metric]: !state.visibleMetrics[metric],
+      },
+    })),
 
   resetFilters: () => set(DEFAULT_FILTERS),
 }));

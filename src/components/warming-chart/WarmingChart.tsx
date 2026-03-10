@@ -1,6 +1,7 @@
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,22 +13,15 @@ import {
 import { format } from 'date-fns';
 import { DateRangePicker } from '../common/DateRangePicker';
 import { ScaleSelector } from '../common/ScaleSelector';
-import { MetricToggle } from '../common/MetricToggle';
 import { MonthSelector } from '../common/MonthSelector';
 import { TrendLineToggle } from '../common/TrendLineToggle';
 import { useWarmingChartData } from '../../hooks/useWarmingChartData';
 import { useFilterStore } from '../../store/useFilterStore';
 import { useDataStore } from '../../store/useDataStore';
 
-const METRIC_LABELS = {
-  avg: 'Average Temperature',
-  min: 'Minimum Temperature',
-  max: 'Maximum Temperature',
-};
-
 export function WarmingChart() {
   const { chartData, stats } = useWarmingChartData();
-  const { metric, showTrendLine, scale } = useFilterStore();
+  const { showTrendLine, scale, visibleMetrics, toggleVisibleMetric } = useFilterStore();
   const { dailyRecords } = useDataStore();
 
   const formatXAxis = (timestamp: number) => {
@@ -59,12 +53,23 @@ export function WarmingChart() {
     const data = payload[0].payload;
     return (
       <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-        <p className="font-medium text-gray-900">{data.label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} style={{ color: entry.color }} className="text-sm">
-            {entry.name}: {formatTooltip(entry.value)}
+        <p className="font-medium text-gray-900 mb-2">{data.label}</p>
+        <div className="space-y-1 text-sm">
+          <p className="text-red-600">
+            Max: {formatTooltip(data.max)}
           </p>
-        ))}
+          <p className="text-gray-900 font-medium">
+            Avg: {formatTooltip(data.avg)}
+          </p>
+          <p className="text-blue-600">
+            Min: {formatTooltip(data.min)}
+          </p>
+          {showTrendLine && data.trendValue !== null && (
+            <p className="text-orange-600 mt-1 pt-1 border-t">
+              Trend: {formatTooltip(data.trendValue)}
+            </p>
+          )}
+        </div>
       </div>
     );
   };
@@ -84,13 +89,12 @@ export function WarmingChart() {
       {/* Controls */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Warming Chart With Different Scales
+          Temperature Trend Analysis
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <DateRangePicker />
           <ScaleSelector />
-          <MetricToggle />
         </div>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -102,7 +106,39 @@ export function WarmingChart() {
       {/* Chart */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-gray-900">{METRIC_LABELS[metric]}</h3>
+          <div>
+            <h3 className="font-medium text-gray-900">Temperature Range</h3>
+            {/* Metric checkboxes */}
+            <div className="flex items-center gap-4 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={visibleMetrics.max}
+                  onChange={() => toggleVisibleMetric('max')}
+                  className="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500"
+                />
+                <span className="text-sm text-red-600 font-medium">Max</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={visibleMetrics.avg}
+                  onChange={() => toggleVisibleMetric('avg')}
+                  className="w-4 h-4 rounded border-gray-300 text-gray-700 focus:ring-gray-500"
+                />
+                <span className="text-sm text-gray-900 font-medium">Avg</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={visibleMetrics.min}
+                  onChange={() => toggleVisibleMetric('min')}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                />
+                <span className="text-sm text-blue-600 font-medium">Min</span>
+              </label>
+            </div>
+          </div>
           {stats.count > 0 && (
             <div className="flex gap-4 text-sm text-gray-600">
               <span>Min: <span className="font-medium text-blue-600">{stats.min?.toFixed(1)}°C</span></span>
@@ -117,7 +153,7 @@ export function WarmingChart() {
         {chartData.length > 0 ? (
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
+              <ComposedChart
                 data={chartData}
                 margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
               >
@@ -141,17 +177,57 @@ export function WarmingChart() {
                 <ReferenceLine y={0} stroke="#93c5fd" strokeDasharray="5 5" />
                 <ReferenceLine y={25} stroke="#fca5a5" strokeDasharray="5 5" />
 
-                {/* Main data line */}
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  name={METRIC_LABELS[metric]}
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={chartData.length < 100}
-                  activeDot={{ r: 6, fill: '#2563eb' }}
-                  connectNulls
-                />
+                {/* Stacked areas for Bollinger band effect */}
+                {(visibleMetrics.min || visibleMetrics.max) && (
+                  <>
+                    {/* Base: min value (invisible, just for positioning) */}
+                    <Area
+                      type="monotone"
+                      dataKey="min"
+                      stackId="band"
+                      fill="transparent"
+                      stroke="none"
+                      name="Min (base)"
+                      legendType="none"
+                    />
+                    {/* Lower band: from min to avg (blue - cold zone) */}
+                    <Area
+                      type="monotone"
+                      dataKey="lowerBand"
+                      stackId="band"
+                      fill={visibleMetrics.min ? "#3b82f6" : "transparent"}
+                      fillOpacity={visibleMetrics.min ? 0.3 : 0}
+                      stroke="none"
+                      name="Min Zone"
+                      legendType={visibleMetrics.min ? "square" : "none"}
+                    />
+                    {/* Upper band: from avg to max (red - hot zone) */}
+                    <Area
+                      type="monotone"
+                      dataKey="upperBand"
+                      stackId="band"
+                      fill={visibleMetrics.max ? "#ef4444" : "transparent"}
+                      fillOpacity={visibleMetrics.max ? 0.3 : 0}
+                      stroke="none"
+                      name="Max Zone"
+                      legendType={visibleMetrics.max ? "square" : "none"}
+                    />
+                  </>
+                )}
+
+                {/* Average line */}
+                {visibleMetrics.avg && (
+                  <Line
+                    type="monotone"
+                    dataKey="avg"
+                    name="Average"
+                    stroke="#1f2937"
+                    strokeWidth={2}
+                    dot={chartData.length < 100}
+                    activeDot={{ r: 6, fill: '#1f2937' }}
+                    connectNulls
+                  />
+                )}
 
                 {/* Trend line */}
                 {showTrendLine && (
@@ -159,14 +235,14 @@ export function WarmingChart() {
                     type="monotone"
                     dataKey="trendValue"
                     name="Trend"
-                    stroke="#dc2626"
+                    stroke="#f97316"
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     dot={false}
                     connectNulls
                   />
                 )}
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         ) : (

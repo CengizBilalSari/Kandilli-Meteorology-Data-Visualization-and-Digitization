@@ -75,6 +75,13 @@ export interface TemperatureCategory {
   color: string;
 }
 
+// Visible metrics for Bollinger band chart
+export interface VisibleMetrics {
+  avg: boolean;
+  min: boolean;
+  max: boolean;
+}
+
 // Filter state
 export interface FilterState {
   startDate: Date | null;
@@ -84,6 +91,7 @@ export interface FilterState {
   selectedMonths: number[]; // 0-11
   showTrendLine: boolean;
   movingAverageWindow: number;
+  visibleMetrics: VisibleMetrics;
 }
 
 // Tab type
